@@ -1,5 +1,6 @@
 ## docker在CentOS上安装
 * 官方文档：https://docs.docker.com/install/linux/docker-ce/centos/#set-up-the-repository
+* 云端docker：https://labs.play-with-docker.com/
 * 更新yum：yum update
 * 卸载旧的版本：
   ```
