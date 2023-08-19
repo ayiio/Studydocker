@@ -71,5 +71,5 @@ sudo install /tmp/docker-machine /usr/local/bin/docker-machine
   # 运行hello
   CMD ["/hello"]
   ```
-* 构建image
+* 构建image   
   docker build -t 本地镜像名 
