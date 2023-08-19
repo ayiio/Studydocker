@@ -15,7 +15,35 @@ yum remove docker \
   ```
 * 安装依赖：
 ```
-yum install -y yum-utils device-mapper-persistent-data lvm2
-yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+yum install -y yum-utils \
+      device-mapper-persistent-data \
+      lvm2
+```
+* 添加repository
+```
+yum-config-manager \
+  --add-repo \
+  https://download.docker.com/linux/centos/docker-ce.repo
+```
+* 安装和运行示例
+```
+列出docker版本：yum list docker-ce --showduplicates | sort -r
+安装：yum -y install docker-ce-(version)
+启动：systemctl start docker
+开机启动： systemctl enable docker
+查看docker：docker version
+运行hello world：docker run hello-world
 ```
 * 安装docker-machine
+```
+base=https://github.com/docker/machine/releases/download/v0.14.0 &&
+curl -L $base/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine &&
+sudo install /tmp/docker-machine /usr/local/bin/docker-machine
+```
+```
+curl -L https://github.com/docker/machine/releases/download/v0.16.2/docker-machine-`uname -s`-`uname -m` >/tmp/docker-machine &&
+    chmod +x /tmp/docker-machine &&
+    sudo cp /tmp/docker-machine /usr/local/bin/docker-machine
+```
+* 下载pip
+
