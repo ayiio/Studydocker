@@ -55,14 +55,14 @@ yum-config-manager \
   `vi hello.go`   
 * 创建docker file   
   vi Dockerfile
-  ```
+```
   # 从最简开始
   FROM scratch
   # 加到根目录
   ADD hello /
   # 运行hello
   CMD ["/hello"]
-  ```
+```
 * 构建image   
   构建到本地image：`docker build -t 本地镜像名 .`    
   根据当前目录下的dockerfile构建image到仓库：`docker build -t docker仓库用户名/hello-world .`
@@ -70,13 +70,13 @@ yum-config-manager \
   运行image：`docker run ImageName`
      
   container变更后，可以使用docker commit构建新的image：`docker commit containerID docker仓库用户名/centos-hg .`   
-  ```
+```
   [Dockerfile]
   FROM centos
   RUN yum -y install lrzsz
 
   docker build -t docker仓库用户名/centos-lrzsz .
-  ```
+```
   
 * 查看container
   查看所有，包括运行结束的：`docker container ls -a`
@@ -198,3 +198,7 @@ docker run centos-cmd3
 ```
 * 分享Dockerfile
   分享Dockerfile更安全
+* 搭建私有docker registry
+```
+  docker run -d -p 5000:5000 --restart always --name registry registry:2
+```
