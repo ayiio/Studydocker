@@ -52,13 +52,24 @@ sudo install /tmp/docker-machine /usr/local/bin/docker-machine
   * Control groups：做资源限制，例如设置占用多少内存/CPU
   * Union file systems：image和container分层
 * docker image
-  文件和meta data集合   
-  查看本地所有image：docker image ls
-* 制作docker image
-  拉取镜像：docker pull ubuntu:14.04   
-  安装go语言环境：下载go-linux.tar.gz，winSCP上传到/usr/local下，解压tar -zxvf go.tar.gz
-  配置环境变量：vi /etc/profile : GOROOT=/usr/local/go   PATH=$PATH:$GOROOT/bin    export PATH
-  使配置文件生效：. /etc/profile
-  mkdir /home/hello-world
+  文件和meta data集合    
+  查看本地所有image：docker image ls    
+* 拉取新镜像并配置go环境
+  拉取镜像：docker pull ubuntu:14.04     
+  安装go语言环境：下载go-linux.tar.gz，winSCP上传到/usr/local下，解压tar -zxvf go.tar.gz     
+  配置环境变量：vi /etc/profile : GOROOT=/usr/local/go   PATH=$PATH:$GOROOT/bin    export PATH    
+  使配置文件生效：. /etc/profile     
+  mkdir /home/hello-world     
   vi hello.go
-  
+* 创建docker file
+  vi Dockerfile
+  ```
+  # 从最简开始
+  FROM scratch
+  # 加到根目录
+  ADD hell /
+  # 运行hello
+  CMD ["/hello"]
+  ```
+* 构建image
+  docker build -t 本地镜像名 
