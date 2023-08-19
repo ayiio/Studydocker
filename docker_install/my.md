@@ -200,5 +200,26 @@ docker run centos-cmd3
   分享Dockerfile更安全
 * 搭建私有docker registry
 ```
+  https://hub.docker.com/_/registry : 
   docker run -d -p 5000:5000 --restart always --name registry registry:2
+
+  vim /etc/docker/daemon.json
+  {
+    "insecure-registries": ["私有docker库ip:5000"]
+  }
+  sudo systemctl daemon-reload
+  sudo systemctl restart docker
+
+  chrome: http://私有docker库ip:5000/v2/_catalog
+```
+* docker源更改
+```
+vi /etc/docker/daemon.json
+
+{
+  "registry-mirrors": ["https://阿里云个人镜像加速器.mirror.aliyuncs.com"]
+}
+
+sudo systemctl daemon-reload
+sudo systemctl restart docker
 ```
