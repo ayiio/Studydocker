@@ -200,15 +200,26 @@ docker run centos-cmd3
   分享Dockerfile更安全
 * 搭建私有docker registry
 ```
-  https://hub.docker.com/_/registry : 
+  https://hub.docker.com/_/registry :
+  私有docker库物理机：
   docker run -d -p 5000:5000 --restart always --name registry registry:2
 
+  打包image:
+  docker build -t 私有docker库ip:5000/imagexxx .
+
+  本机docker.daemon.json添加docker库地址：
   vim /etc/docker/daemon.json
   {
     "insecure-registries": ["私有docker库ip:5000"]
   }
   sudo systemctl daemon-reload
   sudo systemctl restart docker
+
+  发送image到本地仓库：
+  docker push 私有docker库ip:5000/imagexxx
+
+  拉取本地仓库的image：
+  docker pull 私有docker库ip:5000/imagexxx
 
   chrome: http://私有docker库ip:5000/v2/_catalog
 ```
@@ -223,3 +234,22 @@ vi /etc/docker/daemon.json
 sudo systemctl daemon-reload
 sudo systemctl restart docker
 ```
+## 构建
+* 下载pip
+  `yum -y install wget`   
+  `wget https://bootstrap.pypa.io/get-pip.py --no-check-certificate` 或 `wget https://bootstrap.pypa.io/pip/2.7/get-pip.py`
+  `pip install flask`
+* 编写简单的python web app服务
+```
+from flask import Flask
+app = Flask(__name__)
+@app.route('/')
+def hello():
+        return "hello py_docker"
+if __name__ == '__main__':
+        app.run(host="app运行地址", port=端口)
+```
+* 运行服务并访问
+  `python app.py`，并用物理机浏览器访问`app运行地址:端口`
+  
+  
