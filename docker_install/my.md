@@ -81,7 +81,9 @@ yum-config-manager \
 * 查看container
   查看所有，包括运行结束的：`docker container ls -a`
   查看所有运行中/运行过的container ID：`docker container ls -aq`  
-  交互性运行： docker run -it 镜像名     
+  交互性运行： `docker run -it imageXXX`   
+  后台运行： `docker run -itd imageXXX`
+  交互运行：`docker exec -it imageXXX /bin/bash`   
 * 删除container运行记录  
   删除一个：`docker container rm containerID`
   删除多个：`docker container rm $(docker container ls -aq)`
@@ -234,7 +236,7 @@ vi /etc/docker/daemon.json
 sudo systemctl daemon-reload
 sudo systemctl restart docker
 ```
-## 构建
+## 构建web应用，并打包成docker image运行
 * 下载pip
   `yum -y install wget`   
   `wget https://bootstrap.pypa.io/get-pip.py --no-check-certificate` 或 `wget https://bootstrap.pypa.io/pip/2.7/get-pip.py`
@@ -251,5 +253,42 @@ if __name__ == '__main__':
 ```
 * 运行服务并访问
   `python app.py`，并用物理机浏览器访问`app运行地址:端口`
-  
+* Dockerfile
+```
+FROM python:2.7
+LABEL author = "zs"
+RUN pip install flask
+COPY app.py /app/
+WORKDIR /app
+EXPOSE 5000
+CMD ["python", "app.py"]
+
+docker build -t appdemo/flask-hello .
+
+# 镜像后台运行 -itd
+docker run -itd appdemo/flask-hello
+
+# 停止container
+docker stop containerID
+```
+## 快速搭建stress
+* linux系统压力测试
+  * `docker run -it ubuntu`
+  * `apt-get update && apt-get -y install stress`
+  * `which stress`
+  * `stress --help`
+  * `stress --vm 1 --verbose`
+  * `stress --vm 1 --vm-bytes 500000M --verbose`
+## 容器资源限制
+* docker --help： --memory
+* vi Dockerfile
+```
+FROM ubuntu
+RUN apt-get update && apt-get -y install stress
+ENTRYPOINT ["/usr/bin/stress"]
+CMD []   # 等待接收参数
+```
+* docker build  -t XXXX .
+* 内存限制：`docker run --memory=200M imageXXX --vm 1 --verbose`
+* CPU限制：`docker run --cpu-shares=4 --name=test1 imageXX`
   
