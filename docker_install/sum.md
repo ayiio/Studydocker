@@ -67,7 +67,7 @@ ip netns exec test1 ip a #查看test1网络状态
 cat /etc/hostname #主机名
 ```
   
-  命令集示例
+命令集示例
 ```
 docker start test1 #启动test1容器
 docker ps  #查看已启动的容器
@@ -91,7 +91,7 @@ ping test3:3306 #在test4容器内ping test3容器的3306端口，通过主机�
 * 端口映射
   外界访问
 
-  命令集示例
+命令集示例
 ```
 docker run --name web -d nginx  #启动命名为web的nginx容器
 docker network inspect bridge #查看本机bridge配置信息，container ip 172.17.0.2
@@ -104,7 +104,7 @@ docker run --name web2 -d -p 80:80 nginx  #本机和容器映射相同端口，�
   none应用场景：安全性要求极高，存储绝密数据等
   host网络类似于NAT
 
-  命令集示例
+命令集示例
 ```
 docker run -d --name test5 --network none busybox /bin/sh -c "while true; do sleep 3600; done"  #启动一个none类型网络的容器
 docker network inspect none #查看本机network none网络信息，含有test5
@@ -116,6 +116,12 @@ docker exec -it test6 /bin/sh #进入test6容器，ip a命令可以看到只有�
 ```
 * 多容器部署和应用
   flask做web服务，redis做自增
+
+命令集示例
+```
+
+```
+  
 * 多机器多容器通信
   一台做redis，一台做web处理
 ## docker持久化存储和数据共享
