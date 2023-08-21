@@ -115,21 +115,140 @@ docker network inspect host #查看本机network host网络信息，含有test6
 docker exec -it test6 /bin/sh #进入test6容器，ip a命令可以看到只有一个与宿主机相通的网络配置
 ```
 * 多容器部署和应用
-  flask做web服务，redis做自增
+  flask做web服务，redis做自增（同一机器）
+命令集示例
+```
+docker run -d --name redis redis  #运行自定义名为redis的redis容器
+
+mkdir /home/flask-redis
+cd flask-redis
+vi app.py   #创建flask web应用
+    from flask import Flask
+    from redis import Redis
+    import os
+    import socket
+
+    app=Flask(__name__)
+    redis=Redis(host=os.environ.get('REDIS_HOST', '127.0.0.1'), port=6379)
+
+    @app.route('/')
+    def hello():
+        redis.incr('hits')
+        return 'Hello Container World! I have been seen %s times and my hostname is %s.\n' % (redis.get('hits'), sockert.gethostname())
+
+    if __name__ == "__main__":
+        app.run(host="0.0.0.0", port=5000, debug=True)
+
+vi Dockerfile   #创建Dockerfile
+    FROM python:2.7
+    LABEL maintaner="xxx@github.com"
+    COPY . /app
+    WORKDIR /app
+    RUN pip install flask redis
+    EXPOSE 5000
+    CMD ["python", "app.py"]
+
+docker build -t xxx/flask-redis .  #构建image
+docker image ls #查看已经构建的image
+docker run -d --link redis --name flask-redis -e REDIS_HOST=redis xxx/flask-redis #以link redis的方式运行xxx/flask-redis
+docker ps #查看已运行的docker进程
+docker exec -it flask-redis /bin/sh  #交互式进入发布服务的容器
+env  #查看容器环境，可以查到REDIS_HOST=redis
+ping redis #可以ping关联的redis容器
+curl 127.0.0.1:5000 #在本地访问web服务
+exit #退出容器
+
+curl 127.0.0.1:5000 #容器外部无法访问web 容器中的web服务
+docker stop flask-redis  #停止容器
+docker run -d --link redis -p 5000:5000 --name flask-redis2 -e REDIS_HOST=redis xxx/flask-redis  #映射本地端口
+
+docker stop $(docker container ls -aq)  #停止容器
+docker rm $(docker container ls -aq) #删除已停容器
+```
+* 多机器多容器通信
+  一台做redis，一台做web处理
+  overlay网络和etcd通信  
 
 命令集示例
 ```
+多机情况下，要保证IP不冲突，需要记录所有IP，使用分布式存储记录
 
+etcd tar包放到/usr/local下
+tar -zxvf etcd-vxx.tar.gz #解压etcd包
+cd etcd-vxx
+
+#etcd启动命令(node1),需要修改ip-192.168.174.141为主机ip，192.168.174.142为另一主机IP
+nohup ./etcd --name dcker-node1 --initial-advertise-peer-urls http://192.168.174.141:2380 \
+  --listen-peer-urls http://192.168.174.141:2380 \
+  --listen-client-urls http://192.168.174.141:2379, http://127.0.0.1:2379 \
+  --advertise-client-urls http://192.168.174.141:2379 \
+  --initial-cluster-token etcd-cluster \
+  --initial-cluster docker-node1=http://192.168.174.141:2380,docker-node2=http://192.168.174.142:2380 \
+  --initial-cluster-state new&
+#启动后查看状态
+./etcdctl cluster-health
+
+#etcd启动命令(node2),需要修改ip-192.168.174.142为主机ip，192.168.174.141为另一主机IP
+nohup ./etcd --name dcker-node1 --initial-advertise-peer-urls http://192.168.174.142:2380 \
+  --listen-peer-urls http://192.168.174.142:2380 \
+  --listen-client-urls http://192.168.174.142:2379, http://127.0.0.1:2379 \
+  --advertise-client-urls http://192.168.174.142:2379 \
+  --initial-cluster-token etcd-cluster \
+  --initial-cluster docker-node1=http://192.168.174.141:2380,docker-node2=http://192.168.174.142:2380 \
+  --initial-cluster-state new&
+#启动后查看状态
+./etcdctl cluster-health
+
+#停止node1 docker做一些配置
+service docker stop
+
+#docker启动命令(node1)，修改ip-192.168.174.141为主机IP
+/usr/bin/dockerd -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --cluster-store=etcd://192.168.174.141:2379 --cluster-advertise=192.168.174.141:2375&
+
+#查看node1 docker网络状态
+docker network create -d overlay demo #创建名为demo的overlay集群网络
+docker network ls #查看网络状况
+
+doker run -d --name test7 --net demo busybox sh -c "while true; sleep 3600; done"  #node1运行名为test7的busybox容器
+
+-----
+
+#停止node2 docker做一些服务
+service docker stop
+
+#docker启动命令(node2)
+/usr/bin/dockerd -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock --cluster-store=etcd://192.168.174.142:2379 --cluster-advertise=192.168.174.142:2375&
+
+#查看node2 docker网络状态，已经有名为demo的overlay网络
+docker network ls
+
+#node2中运行相同命名的容器时会提示已经存在
+doker run -d --name test7 --net demo busybox sh -c "while true; sleep 3600; done"
+
+ #node2运行名为test8的busybox容器
+doker run -d --name test8 --net demo busybox sh -c "while true; sleep 3600; done"
+docker exec -it test8 #进入容器test8
+ip a #查看网络配置和node1相互错开
 ```
-  
-* 多机器多容器通信
-  一台做redis，一台做web处理
 ## docker持久化存储和数据共享
 * 数据持久化方案
+  * 基于本地文件系统的volume
+  * 基于plugin的volume
 
 * volume类型
+  * 受管理的data volume，由docker后台自动创建
+  * 绑定挂载的volume，具体挂载位置可以由用户指定
 
 * 数据持久化 - data volume
+  * https://hub.docker.com/搜索mysql，可以看到官方的Dockerfile中也定义了VOLUME
+
+mysql镜像，命令集示例
+```
+docker stop $(docker container ls -aq)  #停止所有容器
+docker rm $(docker container ls -aq)  #删除所有已停止的容器
+
+
+```
 
 * 数据持久化 - bind mouting
 
