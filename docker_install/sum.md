@@ -240,7 +240,7 @@ ip a #查看网络配置和node1相互错开
   * 绑定挂载的volume，具体挂载位置可以由用户指定
 
 * 数据持久化 - data volume
-  * https://hub.docker.com/搜索mysql，可以看到官方的Dockerfile中也定义了VOLUME
+  * https://hub.docker.com/搜索mysql，  可以看到官方的Dockerfile中也定义了VOLUME
 
 mysql镜像，命令集示例
 ```
