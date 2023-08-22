@@ -247,7 +247,8 @@ mysql镜像，命令集示例
 docker stop $(docker container ls -aq)  #停止所有容器
 docker rm $(docker container ls -aq)  #删除所有已停止的容器
 docker run -d --name mysql -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql #启动无密码的mysql容器
-
+docker ps  #查看已运行的mysql image进程
+docker volumn ls 
 ```
 
 * 数据持久化 - bind mouting
