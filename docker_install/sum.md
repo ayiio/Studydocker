@@ -246,19 +246,73 @@ mysql镜像，命令集示例
 ```
 docker stop $(docker container ls -aq)  #停止所有容器
 docker rm $(docker container ls -aq)  #删除所有已停止的容器
-docker run -d --name mysql -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql #启动无密码的mysql容器
+docker run -d --name mysql1 -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql #启动无密码的mysql容器
 docker ps  #查看已运行的mysql image进程
-docker volumn ls 
+docker volume ls #查看生成的volume
+docker volume inspect volumeNameID  #查看volume存放目录和创建时间
+docker stop mysql1  #停掉mysql容器
+docker rm mysql1 #删除mysql容器，容器删除后，volume仍存在
+docker volume prune  #删除不再引用的空间
+
+docker run -d -v mysql:/var/lib/mysql --name mysql1 -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql #启动无密码且指定文件目录名的mysql容器
+docker exec -it mysql /bin/bash #进入mysql container，
+mysql -uroot  #无密码登录mysql命令行, create database test1; 创建新库后退出
+docker stop mysql1  #停掉mysql容器
+docker rm mysql1  #删除mysql容器
+docker run -d -v mysql:/var/lib/mysql --name mysql1 -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql #再次生成无密码且指定相同文件目录名的mysql容器，test1库会自行读入，实现了数据的持久化，后续创建指定到同一位置，会自动读取原数据
 ```
-
 * 数据持久化 - bind mouting
+  * 可以指定一个与容器同步的目录，容器变化，文件同步变化
 
+命令集示例
+```
+mkdir /home/nginx
+cd /home/nginx
+vi index.html  #在/home/nginx下创建一个简单的欢迎页
+    <h1>Hello docker</h1>
+
+vi Dockerfile  #在/home/nginx下创建Dockerfile
+FROM nginx:latest
+WORKDIR /usr/share/nginx/html
+COPY index.html index.html
+
+docker build -t nginx .  #编译nginx镜像
+docker image ls #查看nginx image
+docker run -d -p 80:80 --name web nginx  #启动nginx image，映射容器80端口到本机80端口
+curl 127.0.0.1  #将显示被/home/nginx/index.html替换过的内容
+
+docker stop web  #停掉web容器，使用bind monting
+docker rm web  #删除web容器
+docker run -d -v /home/nginx:/usr/share/nginx/html -p 80:80 --name web nginx  #映射容器内/usr/share/nginx/html目录到本地/home/nginx目录
+docker exec -it web /bin/bash  #进入容器，touch test.txt创建test.txt后退出
+ls -ltr #本地查看，也会有test.txt文件，实现了容器内数据/文件的本地持久化
+```
 ## docker Compose多容器部署
 * docker部署wordpress
+  * wordpress是一个博客网站
 
+命令集示例
+```
+docker pull wordpress #拉取wordpress镜像
+docker pull mysql:5.5  #使用老版本避免冲突，但wordpress默认读取mysql latest版本，需要手动指定mysql:5.5为latest来解决wordpress读取mysql错误的问题
+docker tag mysql:5.5 mysql:latest #标记mysql:5.5为latest版本
+
+docker run -d name mysql -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql #运行mysql容器
+docker run -d -e WORKPRESS_DB_HOST=mysql:3306 --like mysql -p 8080:80 wordpress #映射容器80端口为本地8080端口，并连接mysql容器，外部浏览器可以通过ip:8080访问wordpress容器
+```
 * Compose介绍
+  * docker compose类似批处理方式，简化了多容器APP的部署和管理
 
 * docker compose安装和使用
+  * 下载
+
+命令集示例
+```
+    curl -L http://github.com/docker/compose/release/download/1.18.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+
+```
+  * 安装后需要赋权限
+  * 用docker-compose的方式部署wordpress
 
 * 容器扩展和负载均衡
 
