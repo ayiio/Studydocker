@@ -308,16 +308,218 @@ docker run -d -e WORKPRESS_DB_HOST=mysql:3306 --like mysql -p 8080:80 wordpress 
 
 命令集示例
 ```
-    curl -L http://github.com/docker/compose/release/download/1.18.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
-
+curl -L http://github.com/docker/compose/release/download/1.18.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose  #获取docker-compose
 ```
   * 安装后需要赋权限
+```
+chmod +x docker-compose  #添加执行权限
+docker-compose --version  #任意目录查看工具是否可用
+```
   * 用docker-compose的方式部署wordpress
+```
+mkdir /home/wordpress
+cd /home/wordpress
+vi docker-compose.yml
+
+version: '3'  #使用版本3的docker-compose
+
+services:  #类似container
+  wordpress:  #类似container名
+    image: wordpress  #镜像
+    ports:  #端口映射
+      - 80:80
+    environment:
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_PASSWORD: admin
+    networks:
+      - my-bridge   #和mysql在一个网段
+  mysql:
+    image: mysql:5.5
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: wordpress
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - my-bridge
+
+volumes:
+  mysql-data:
+
+networks:
+  my-bridge:
+    driver: bridge  #指定的网络类型
+```
+编辑完docker-compose.yml文件后使用`docker-compose up`执行，或`docker-compose -f docker-compose2.yml up`指定对应的yml文件。     
+执行后通过`docker ps`可以查看对应已启用的container，使用`ctrl+c`停止，停过后可以使用`docker ps -a`找到记录。  
+使用`docker-compose down`停止对应的container并删除。     
+使用`docker-compose -f docker-compose.yml up` + `docker-compose exec mysql bash`/`docker-compose exec wordpress bash`交互式运行
+
+
+docker-compose结合Dockerfile使用的命令集示例
+```
+以/home/fask-redis/app.py + /home/fask-redis/Dockerfile为示例
+同级目录下创建vi docker-compose.yml
+
+version: '3'
+
+services: 
+  redis: 
+    image: redis
+  web: 
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      ports: 
+        - 8080:5000
+      environment: 
+        REDIS_HOST: redis
+```
+编写docker-compose后启动,`docker-compose -f docker-compose.yml up`   
 
 * 容器扩展和负载均衡
+  * 容器扩展  scale
+命令集示例
+```
+#docker-compose.yml中将ports信息删除，扩展时使其自动分配端口
+version: '3'
+
+services: 
+  redis: 
+    image: redis
+  web: 
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      environment: 
+        REDIS_HOST: redis
+
+#使用scale扩展，容器内的5000端口可以自动映射，另需要负载均衡器配置访问
+docker-compose up --scale web=3 -d
+```
+  * 负载均衡
+`vi /home/flask-redis/app.py`修改`app.run(host="0.0.0.0", port=80, debug=True)`使其默认跑在80端口
+`vi /home/flask-redis/Dockerfile`修改`EXPOSE 80`
+`vi /home/flask-redis/docker-compose.yml`添加负载均衡器`dokercloud/haproxy`，配置和redis镜像同级缩进    
+```
+lb:
+  image: dockercloud/haproxy
+  ports:
+    - 8080:80
+  links:
+    - web
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+```
+配置好后`docker-compose up`运行
+可以运行时动态扩展：`docker-compose up --scale web=3 -d`，轮询执行    
+可以运行时动态缩容：`docker-compose up --scale web=1 -d`，会删除多余容器
 
 * 复杂应用部署
+![image](https://github.com/ayiio/studyDocker/assets/61615400/8172abb7-9421-463e-92a7-325c52768e71)
 
+总docker-compose.yml示例
+```
+front-tier表示外部可访问，back-tier表示内部可访问
+
+version: "3"
+
+services:
+  voting-app:
+    build: ./voting-app/.
+    volumes:
+      - ./voting-app:/app
+    ports:
+      - "5000:80"
+    links:
+      - redis
+    networks:
+      - front-tier
+      - back-tier
+
+  result-app:
+    build: ./result-app/.
+    volumes:
+      - ./result-app:/app
+    ports:
+      - "5001:80"
+    links:
+      - db
+    networks:
+      - front-tier
+      - back-tier
+
+  worker:
+    build: ./worker
+    links:
+      - db
+      - redis
+    networks:
+      - back-tier
+
+  redis:
+    image: redis
+    ports: ["6379"]
+    networks:
+      - back-tier
+
+  db:
+    image: postgres:9.4
+    volumes:
+      - "db-data:/var/lib/postgresql/data"
+    networks:
+      - back-tier
+
+volumes:
+  db-data:
+
+networks:
+  front-tier:
+  back-tier:
+```
+
+woker模块，Dockerfile示例
+```
+目录层级：
+worker:
+    src:
+    Dockerfile
+    pom.xml
+
+FROM java:7
+
+RUN apt-get update -qq && apt-get install -y maven && apt-get clean
+
+WORKDIR /code
+
+ADD pom.xml /code/pom.xml
+RUN ["mvn", "dependency:resolve"]
+RUN ["mvn", "verify"]
+
+# Adding source, compile and package into a fat jar
+ADD src /code/src
+RUN ["mvn", "package"]
+
+CMD ["/usr/lib/jvm/java-7-openjdk-amd64/bin/java", "-jar", "target/worker-jar-with-dependencies.jar"]
+```
+
+voting-app模块，Dockerfile示例
+```
+FROM python:2.7
+
+WORKDIR /app
+
+ADD requirements.txt /app/requirements.txt
+RUN pip install -r requirements.txt
+
+# copy code from current floder to /app inside the container
+ADD . /app
+
+# make port 5000 available for links and/or publish
+EXPOSE 80
+
+CMD ["python", "app.py"]
+```
 ## 容器编排 docker swarm
 * 编排swarm简介
 
