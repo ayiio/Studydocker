@@ -522,6 +522,7 @@ CMD ["python", "app.py"]
 ```
 ## 容器编排 docker swarm
 * 编排swarm简介
+![image](https://github.com/ayiio/studyDocker/assets/61615400/8c0c76a7-a3cd-478f-ae65-b1f88f706f38)
 
 * 三节点swarm集群搭建
 
