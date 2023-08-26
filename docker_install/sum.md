@@ -563,7 +563,14 @@ docker rm -f containerID
 docker service ls
 ```
 * 通过DockerStack部署Voting app
+  * 多机集群方式部署应用
+命令集示例：
+```
+docker stop $(docker container ls -aq) #停掉docker容器
+docekr rm $(docker container ls -aq)   #删除已有的容器，需要先删除子node上的容器再删除主机上的
 
+docker swarm swarm leave -f #各个节点各自leave后，不再重新创建新的集群环境
+```
 * 使用DockerStack部署可视化应用
 
 * 使用并管理DockerSecret
