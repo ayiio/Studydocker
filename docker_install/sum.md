@@ -522,8 +522,50 @@ CMD ["python", "app.py"]
 ```
 ## 容器编排 docker swarm
 * 编排swarm简介    
-![image](https://github.com/ayiio/studyDocker/assets/61615400/8c0c76a7-a3cd-478f-ae65-b1f88f706f38)
+![image](https://github.com/ayiio/studyDocker/assets/61615400/ef3b363c-0ec8-4eff-8229-99c2339b6bb8)
+
+
+* 服务创建和调度
+* 在swarm manage做决策，决定将worker部署到哪里    
+![image](https://github.com/ayiio/studyDocker/assets/61615400/f1c3ab63-9097-4f0b-90f7-617e18f12f8f)
 
 * 三节点swarm集群搭建
+示例：3台主机，ip分别为192.168.16.65/66/67，示例将65作为主机，66和67作为从机
+代码集示例：
+```
+#主机初始化
+docker swarm init --advertise-addr=192.168.16.65  #swarm集群初始化    
 
-* 创建维护service并扩展
+#从机分别加入swarm
+docker swarm join --token XXXXXXXXXXXXX-XXXXXXXXX  192.168.16.65:2377  #会提示This node joined a swarm as a worker
+
+#从机退出集群
+docker swarm leave -f  #从机退出集群，提示node leave the swarm
+
+#主节点查看集群情况
+docker node ls  #主机，从机退出，状态会标识为Down
+```
+* 创建维护Service并扩展
+代码集示例：
+```
+docker service create --name demo busybox sh -c "while true; do sleep 3600; done"  #集群创建容器
+docker service ls  #查看集群中的容器
+docker ps #查看容器运行在哪个节点
+
+#扩容
+docker service scale demo=5  #使用scale进行扩容
+docker service ls  #REPLICAS提示5/5，共5个实例，根据集群中各个节点状态自行分配
+
+#强制关停某一节点上的容器
+docker rm -f containerID
+
+#主机中使用docker service ls查看存在短暂REPLICAS=4/5的状态，并迅速恢复为5/5
+docker service ls
+```
+* 通过DockerStack部署Voting app
+
+* 使用DockerStack部署可视化应用
+
+* 使用并管理DockerSecret
+
+
