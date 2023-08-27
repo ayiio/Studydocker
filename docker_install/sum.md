@@ -563,6 +563,7 @@ docker rm -f containerID
 docker service ls
 ```
 * 通过DockerStack部署Voting app
+* 使用DockerStack部署可视化应用
   * 多机集群方式部署应用
 命令集示例：
 ```
@@ -572,90 +573,68 @@ docekr rm $(docker container ls -aq)   #删除已有的容器，需要先删除�
 docker swarm swarm leave -f #各个节点各自leave后，不再重新创建新的集群环境
 
 mkdir /
-#编辑新的docker-compose.yml
+#编辑新的docker-compose.yml，nginx跑4个，visualizer和portainer用于页面监控
 version: "3"
 services:
-  redis:
-    image: redis:alpine
-    port:
-      - "6379"
-    networks:
-      - frontend
-    deploy:
-      replicas: 2
-      update_config:
-        parallelism: 2
-        delay: 10s
-      restart_policy:
-        condition: on-failure
-
-  db:
-    image: postgres:9.4
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    networks:
-      - backend
-    deply:
-      placement:
-        constraints: [node.role == manager]
-
-  vote:
-    image: dockersample/examplevotingapp_vote:before
+  nginx:
+    image: nginx.alpine
     ports:
-      - 5000:80
-    networks:
-      - frontend
-    depends_on:
-      - redis
-    deploy:
-      replicas: 2
-      update_config:
-        parallelism: 2
-      restart_policy:
-        condition: on-failure
-
-  result:
-    image: dockersamples/examplevotingapp_result:before
-    ports:
-      - 5001:80
-    networks:
-      - backend
-    depends_on:
-      - db
-    deploy:
-      replicas: 1
-      update_config:
-        parallelism: 2
-        delay: 10s
-      restart_policy:
-        condition: on-failure
-
-  worker:
-    image: dockersample/examplevotingapp_worker
-    networks:
-      - frontend
-      - backend
+      - 80:80
     deploy:
       mode: replicated
+      replicas: 4
+
+  visualizer:
+    image: dockersamples/visualizer
+    ports:
+      - "9001:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    deploy:
       replicas: 1
-      labels: [APP=VOTING]
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max attempts: 3
-        window: 120s
       placement:
         constraints: [node.role == manager]
 
-networks:
-  frontend
-  backend
+  portainer:
+    image: portainer/portainer
+    ports:
+      - "9000:9000"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
 
-volumes:
-  db-data:
+
+#启动docker-compose，
+docker swarm init --advertise-add=192.168.16.65  #开启集群
+docker swarm join --token XXXXXXXXXX-XXXXX 192.168.16.65:2377  # 从机分别join到集群中
+docker stack deploy -c docker-compose.yml stack-demo    # 创建容器并启动
+docker stack services stack-demo  #查看集群状态
+
+浏览器通过任意节点IP访问都可以，192.168.16.66:9001访问，docker swarm leave -f，任意节点离开后会重新分配
+
+docker service scale stack-demo_portainer=3   #扩容监控容器为3个，constraints: [node.role == manager]指定监控必须分配在主节点
+
+docker stack rm stack-demo  #退掉并删除集群， 补充docker service rm $(docker service ls -q) 退掉集群后自动删除会报rm错误
+docker swarm leave -f  #离开集群
+ 
+## k8s相关： github.com/kubernetes-client/go
 ```
-* 使用DockerStack部署可视化应用
-
 * 使用并管理DockerSecret
+docker-compose.yml中配置的db容器，例如mysql可以使用官方提供的参数`MYSQL_ROOT_PASSWORD`设置root密码，但不便于放置在compose.yml文件中。通过dockerSecret进行加密。
+
+代码集示例：
+```
+mkdir /home/secret
+
+vi password
+abc123
+
+docker secret create
+```
+
+* 更新service版本
 
 
