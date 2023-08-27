@@ -632,9 +632,32 @@ mkdir /home/secret
 vi password
 abc123
 
-docker secret create
+docker swarm init --advertise-addr=192.168.16.65  #创建集群环境
+docker swarm join --token XXXXXXXXX-XXXXXX 192.168.16.65:2377  #从机node加入集群
+docker secret create my-pw password   #创建一个secret，分布式存储在manager中，并通过raft算法分布式同步到manager中
+docker secret ls #查看已创建的密码
+
+echo "admin" |docker secret create my-pw2 -   #另一种方式创建加密
+docker secret rm  #删除密码id
+
+docker service create --name db --secret my-pw -e MYSQL_ROOT_PASSWORD_FILE=/run/secrets/my-pw mysql  #使用加密密码my-pw在集群中启动mysql
+
+docker exec -it MysqlContainerID sh  #交互式运行mysql容器
+ls /run/secrets  #可以看到有my-pw的文件
+mysql -uroot -p  #使用设置的my-pw：abc123的密码登录到mysql
 ```
-
 * 更新service版本
+service <==> container
+命令集示例：
+```
+docker network create -d overlay demo  #创建名为demo的集群网络
+docker service create --name nginx --publish 80:80 --network demo nginx:1.12  #指定运行1.12版本的nginx并命名为nginx并使用demo的网络
+docker service ls  #查看已经创建的集群容器
+curl 127.0.0.1  #访问nginx欢迎页
+sh -c "while true; do curl 127.0.0.1&%sleep 5; done;"  #每5秒访问一次nginx的欢迎页
 
+docker service update --image nginx:1.13 nginx   #更新版本，nginx升级到1.13，访问页将提示拒绝连接，等到更新完成后，访问自动恢复
 
+##
+docker service update --publish-rm 80:80 --publish-add 8080:80 nginx #更新80端口为8080，访问端需要停掉重新curl重新访问
+```
